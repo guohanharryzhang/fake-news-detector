@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fake News Detector</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,
+  %3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E
+  %3Ctext y='.9em' font-size='90'%3E🔍%3C/text%3E%3C/svg%3E">
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>  
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+  <div class="text-center">
+    <h1 class="display-4 mb-3">Fake News Detector</h1>
+    <p class="lead">Enter a headline and find out if it's real or fake.</p>
+  </div>
+
+  <div class="card shadow p-4 mx-auto" style="max-width: 600px;">
+    <input type="text" class="form-control mb-3" id="titleInput" placeholder="e.g. NASA discovers alien microbes">
+    <button id="predictButton" class="btn btn-primary w-100" onclick="predict()">Predict</button>
+    <div id="result" class="mt-4 text-center fs-5"></div>
+  </div>
+
+  <div class="mt-5">
+    <h3 class="text-center mb-4">Token Embedding Visualization</h3>
+    <div id="embeddingPlot">
+    </div>
+  </div>
+</div>
+
+<script>
+  let isProcessing = false;
+  
+  async function predict() {
+    const title = document.getElementById("titleInput").value.trim();
+    const predictButton = document.getElementById("predictButton");
+    const resultBox = document.getElementById("result");
+    resultBox.innerText = "";
+
+    if (title.length === 0) {
+      resultBox.innerText = "Please enter a headline";
+      resultBox.style.color = "red";
+      return;
+    }
+
+    if (isProcessing) return;
+
+    isProcessing = true;
+    predictButton.disabled = true;
+    predictButton.innerText = "Processing...";
+    resultBox.style.color = "black";
+
+    try {
+      // Call the prediction API
+      const response = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title })
+      });
+      const data = await response.json();
+
+      if (data.class === 1) {
+          resultBox.innerText = `Real News (${data.confidence.toFixed(2)}% confident)`;
+          resultBox.style.color = "green";
+        } else {
+          resultBox.innerText = `Fake News (${data.confidence.toFixed(2)}% confident)`;
+          resultBox.style.color = "red";
+        }
+      // if the prediction is successful, then we can request the embedding plot
+      isProcessing = false;
+      predictButton.disabled = false;
+      predictButton.innerText = "Predict";
+      // Request embedding plot
+      const plotResponse = await fetch("/embedding-plot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title })
+      });
+      
+      if (plotResponse.ok) {
+        const fig = await plotResponse.json();
+        Plotly.newPlot("embeddingPlot", fig.data, fig.layout);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      resultBox.innerText = "Error: Failed to analyze headline";
+      resultBox.style.color = "red";
+    } finally {
+      isProcessing = false;
+      predictButton.disabled = false;
+      predictButton.innerText = "Predict";
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo   
+# Jupyter
+.ipynb_checkpoints/
+
+# Models & Data
+data/
+
+# Environments
+.env
+.venv/
+.vscode/
